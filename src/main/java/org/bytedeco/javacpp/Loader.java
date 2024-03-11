@@ -341,17 +341,69 @@ public class Loader {
             }
             if (c.isAnnotationPresent(Platform.class)) {
                 Platform p = c.getAnnotation(Platform.class);
-                if (p.pragma().length > 0 || p.define().length > 0 || p.exclude().length > 0 || p.include().length > 0 || p.cinclude().length > 0
-                    || p.includepath().length > 0 || p.includeresource().length > 0 || p.compiler().length > 0
-                    || p.linkpath().length > 0 || p.linkresource().length > 0 || p.link().length > 0 || p.frameworkpath().length > 0
-                    || p.framework().length > 0 || p.preloadresource().length > 0 || p.preloadpath().length > 0 || p.preload().length > 0
-                    || p.resourcepath().length > 0 || p.resource().length > 0 || p.library().length() > 0) {
+                if(!isPlatformEmpty(p)){
                     break;
                 }
             }
             c = c.getEnclosingClass();
         }
         return c;
+    }
+    /**
+     * If annotated with Platform, or Properties with platforms, returns the argument as "enclosing Class".
+     * If no Platform, or properties with platforms, are found on the Class, makes a search for the first Class
+     * with platforms that we can use, and returns it as the enclosing Class found.
+     *
+     * @param cls the Class to start the search from
+     * @return the enclosing Class
+     * @see org.bytedeco.javacpp.annotation.Platform
+     * @see org.bytedeco.javacpp.annotation.Properties
+     */
+    public static Class getEnclosingClassWithPlatforms(Class cls){
+        Class<?> c = cls;
+
+        if(c.isAnnotationPresent(Platform.class) && !isPlatformEmpty(c.getAnnotation(Platform.class))){
+            return c;
+        }
+
+        org.bytedeco.javacpp.annotation.Properties classProperties = c.getAnnotation(org.bytedeco.javacpp.annotation.Properties.class);
+        if(classProperties!=null){
+
+            Platform[] propertyPlatforms=classProperties.value();
+            if(propertyPlatforms!=null){
+                for (Platform platform : propertyPlatforms) {
+                    if (!isPlatformEmpty(platform)) {
+                        return c;
+                    }
+                }
+            }
+            if(classProperties.inherit()!=null){
+                for (Class parent:classProperties.inherit()) {
+                    Class ret = getEnclosingClassWithPlatforms(parent);
+                    if(ret!=null){
+                        return ret;
+                    }
+                }
+            }
+
+        }
+
+        c=c.getEnclosingClass();
+        if(c==null){
+            return null;
+        }
+        return getEnclosingClassWithPlatforms(c);
+
+
+
+    }
+    public static boolean isPlatformEmpty(Platform p){
+        return p.pragma().length <= 0 && p.define().length <= 0 && p.exclude().length <= 0 && p.include().length <= 0 && p.cinclude().length <= 0
+                && p.includepath().length <= 0 && p.includeresource().length <= 0 && p.compiler().length <= 0
+                && p.linkpath().length <= 0 && p.linkresource().length <= 0 && p.link().length <= 0 && p.frameworkpath().length <= 0
+                && p.framework().length <= 0 && p.preloadresource().length <= 0 && p.preloadpath().length <= 0 && p.preload().length <= 0
+                && p.resourcepath().length <= 0 && p.resource().length <= 0 && p.library().length() <= 0;
+
     }
 
 

@@ -193,6 +193,8 @@ public class ClassProperties extends HashMap<String,List<String>> {
             }
             platforms = classProperties.value();
         }
+
+        boolean checkOnlyLibrary=false;
         if (classPlatform != null) {
             if (platforms == null) {
                 platforms = new Platform[] { classPlatform };
@@ -200,12 +202,42 @@ public class ClassProperties extends HashMap<String,List<String>> {
                 platforms = Arrays.copyOf(platforms, platforms.length + 1);
                 platforms[platforms.length - 1] = classPlatform;
             }
+        }else if(platforms==null|| platforms.length==0){
+            Class<?> parentWithPlatforms = Loader.getEnclosingClassWithPlatforms(cls);
+            if(parentWithPlatforms!=null){
+                boolean putStandAlonePlatform = parentWithPlatforms.isAnnotationPresent(Platform.class) &&
+                        !parentWithPlatforms.getAnnotation(Platform.class).library().isEmpty();
+                org.bytedeco.javacpp.annotation.Properties parentProperties=parentWithPlatforms.getAnnotation(org.bytedeco.javacpp.annotation.Properties.class);
+                int[] withLibraryIndices=null;
+                int count=0;
+                Platform[] vals=null;
+                if(parentProperties!=null && (vals=parentProperties.value())!=null){
+                    withLibraryIndices = new int[vals.length];
+                    for(int i=0;i<vals.length;i++){
+                        if(vals[i].library()!= null && !vals[i].library().isEmpty()){
+                            withLibraryIndices[count++]=i;
+                        }
+                    }
+                }
+                platforms= new Platform[count+(putStandAlonePlatform?1:0)];
+                if(putStandAlonePlatform){
+                    platforms[platforms.length-1]=parentWithPlatforms.getAnnotation(Platform.class);
+                }
+                if(count>0){
+                    for(int i=0;i<count;i++){
+                        platforms[i]=vals[withLibraryIndices[i]];
+                    }
+                }
+            }
+            checkOnlyLibrary=true;
+
         }
-        boolean hasPlatformProperties = platforms != null && platforms.length > (classProperties != null && classPlatform != null ? 1 : 0);
+
+        boolean hasPlatformProperties = platforms != null && !checkOnlyLibrary && platforms.length > (classProperties != null && classPlatform != null ? 1 : 0);
 
         String[] pragma = {}, define = {}, exclude = {}, include = {}, cinclude = {}, includepath = {}, includeresource = {}, compiler = {},
-                 linkpath = {}, linkresource = {}, link = {}, frameworkpath = {}, framework = {}, preloadpath = {}, preloadresource = {}, preload = {},
-                 resourcepath = {}, resource = {}, extension = {}, executablepath = {}, executable = {};
+                linkpath = {}, linkresource = {}, link = {}, frameworkpath = {}, framework = {}, preloadpath = {}, preloadresource = {}, preload = {},
+                resourcepath = {}, resource = {}, extension = {}, executablepath = {}, executable = {};
         String library = "jni" + c.getSimpleName();
         if (hasPlatformProperties) {
             if (ourTarget != null && ourTarget.length() > 0) {
@@ -241,28 +273,35 @@ public class ClassProperties extends HashMap<String,List<String>> {
                 if (!match) {
                     continue;
                 }
-                if (p.pragma()     .length > 0) { pragma      = p.pragma();      }
-                if (p.define()     .length > 0) { define      = p.define();      }
-                if (p.exclude()    .length > 0) { exclude     = p.exclude();     }
-                if (p.include()    .length > 0) { include     = p.include();     }
-                if (p.cinclude()   .length > 0) { cinclude    = p.cinclude();    }
-                if (p.includepath().length > 0) { includepath = p.includepath(); }
-                if (p.includeresource().length > 0) { includeresource = p.includeresource(); }
-                if (p.compiler()   .length > 0) { compiler    = p.compiler();    }
-                if (p.linkpath()   .length > 0) { linkpath    = p.linkpath();    }
-                if (p.linkresource()   .length > 0) { linkresource    = p.linkresource();    }
-                if (p.link()       .length > 0) { link        = p.link();        }
-                if (p.frameworkpath().length > 0) { frameworkpath = p.frameworkpath(); }
-                if (p.framework()  .length > 0) { framework   = p.framework();   }
-                if (p.preloadresource().length > 0) { preloadresource = p.preloadresource(); }
-                if (p.preloadpath().length > 0) { preloadpath = p.preloadpath(); }
-                if (p.preload()    .length > 0) { preload     = p.preload();     }
-                if (p.resourcepath().length > 0) { resourcepath = p.resourcepath(); }
-                if (p.resource()    .length > 0) { resource     = p.resource();     }
-                if (p.extension()   .length > 0) { extension    = p.extension();    }
-                if (p.executablepath().length > 0) { executablepath = p.executablepath(); }
-                if (p.executable()  .length > 0) { executable   = p.executable();   }
-                if (p.library().length() > 0)   { library     = p.library();     }
+
+                    if (p.library().length() > 0)   { library     = p.library();     }
+                    if(checkOnlyLibrary){
+                        continue;
+                    }
+                    if (p.pragma()     .length > 0) { pragma      = p.pragma();      }
+                    if (p.define()     .length > 0) { define      = p.define();      }
+                    if (p.exclude()    .length > 0) { exclude     = p.exclude();     }
+                    if (p.include()    .length > 0) { include     = p.include();     }
+                    if (p.cinclude()   .length > 0) { cinclude    = p.cinclude();    }
+                    if (p.includepath().length > 0) { includepath = p.includepath(); }
+                    if (p.includeresource().length > 0) { includeresource = p.includeresource(); }
+                    if (p.compiler()   .length > 0) { compiler    = p.compiler();    }
+                    if (p.linkpath()   .length > 0) { linkpath    = p.linkpath();    }
+                    if (p.linkresource()   .length > 0) { linkresource    = p.linkresource();    }
+                    if (p.link()       .length > 0) { link        = p.link();        }
+                    if (p.frameworkpath().length > 0) { frameworkpath = p.frameworkpath(); }
+                    if (p.framework()  .length > 0) { framework   = p.framework();   }
+                    if (p.preloadresource().length > 0) { preloadresource = p.preloadresource(); }
+                    if (p.preloadpath().length > 0) { preloadpath = p.preloadpath(); }
+                    if (p.preload()    .length > 0) { preload     = p.preload();     }
+                    if (p.resourcepath().length > 0) { resourcepath = p.resourcepath(); }
+                    if (p.resource()    .length > 0) { resource     = p.resource();     }
+                    if (p.extension()   .length > 0) { extension    = p.extension();    }
+                    if (p.executablepath().length > 0) { executablepath = p.executablepath(); }
+                    if (p.executable()  .length > 0) { executable   = p.executable();   }
+
+
+
             }
         }
         for (int i = 0; i < includeresource.length; i++) {
